@@ -6,6 +6,8 @@ Bernhard Kerbl*, Georgios Kopanas*, Thomas Leimkühler, George Drettakis (* indi
 
 This repository contains the modified version of the official implementation associated with the paper "3D Gaussian Splatting for Real-Time Radiance Field Rendering", which can be found [here](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/)
 
+This is the Depth branch. This branch will need depth image as input. For now, the depth image is 8-bit png file. "make-depth.py" can be used to generate the desired depth images.
+
 <a href="https://www.inria.fr/"><img height="100" src="assets/logo_inria.png"> </a>
 <a href="https://univ-cotedazur.eu/"><img height="100" src="assets/logo_uca.png"> </a>
 <a href="https://www.mpi-inf.mpg.de"><img height="100" src="assets/logo_mpi.png"> </a> 
