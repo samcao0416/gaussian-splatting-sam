@@ -31,9 +31,32 @@ try:
     TENSORBOARD_FOUND = True
 except ImportError:
     TENSORBOARD_FOUND = False
+import subprocess
 
 def custom_collate(batch):
     return batch
+
+def get_gpu_memory_usage():
+    # 调用 nvidia-smi 命令
+    result = subprocess.run(['nvidia-smi', '--query-gpu=memory.used,memory.total', '--format=csv,nounits,noheader'],
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    
+    if result.returncode != 0:
+        print("Error: Unable to get GPU memory usage.")
+        return None
+    
+    # 解析输出
+    lines = result.stdout.strip().split('\n')
+    memory_info = [line.split(', ') for line in lines]
+    
+    gpu_memory_usage = []
+    for used, total in memory_info:
+        used = float(used)
+        total = float(total)
+        usage_percentage = (used / total) * 100
+        gpu_memory_usage.append(usage_percentage)
+    
+    return gpu_memory_usage[0]
 
 def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoint_iterations, checkpoint, debug_from):
     first_iter = 0
@@ -171,6 +194,10 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
                 print("\n[ITER {}] Saving Gaussians".format(iteration))
                 scene.save(iteration)
 
+            if iteration % 1000 == 0:
+                gpu_memory_percentage = get_gpu_memory_usage()
+                if gpu_memory_percentage > opt.gpu_memory_limit:
+                    scene.save(iteration)
             # Densification
             if iteration < opt.densify_until_iter:
                 # Keep track of max radii in image-space for pruning

@@ -89,6 +89,9 @@ class OptimizationParams(ParamGroup):
         self.densify_until_iter = 15_000
         self.densify_grad_threshold = 0.0002
         self.random_background = False
+
+        self.gpu_memory_limit = 90
+        
         super().__init__(parser, "Optimization Parameters")
 
 def get_combined_args(parser : ArgumentParser):
