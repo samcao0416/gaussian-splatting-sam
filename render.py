@@ -20,6 +20,7 @@ from utils.general_utils import safe_state
 from argparse import ArgumentParser
 from arguments import ModelParams, PipelineParams, get_combined_args
 from gaussian_renderer import GaussianModel
+from utils.camera_utils import ViewpointDataset
 
 def render_set(model_path, name, iteration, views, gaussians, pipeline, background):
     render_path = os.path.join(model_path, name, "ours_{}".format(iteration), "renders")
@@ -28,9 +29,15 @@ def render_set(model_path, name, iteration, views, gaussians, pipeline, backgrou
     makedirs(render_path, exist_ok=True)
     makedirs(gts_path, exist_ok=True)
 
-    for idx, view in enumerate(tqdm(views, desc="Rendering progress")):
-        rendering = render(view, gaussians, pipeline, background)["render"]
-        gt = view.original_image[0:3, :, :]
+    for idx, viewpoint_cam in enumerate(tqdm(views, desc="Rendering progress")):
+        #for testing
+        viewpoint_cam.world_view_transform = viewpoint_cam.world_view_transform.cuda()
+        viewpoint_cam.projection_matrix = viewpoint_cam.projection_matrix.cuda()
+        viewpoint_cam.full_proj_transform = viewpoint_cam.full_proj_transform.cuda()
+        viewpoint_cam.camera_center = viewpoint_cam.camera_center.cuda()
+
+        rendering = render(viewpoint_cam, gaussians, pipeline, background)["render"]
+        gt = viewpoint_cam.original_image[0:3, :, :]
         torchvision.utils.save_image(rendering, os.path.join(render_path, '{0:05d}'.format(idx) + ".png"))
         torchvision.utils.save_image(gt, os.path.join(gts_path, '{0:05d}'.format(idx) + ".png"))
 
@@ -43,10 +50,12 @@ def render_sets(dataset : ModelParams, iteration : int, pipeline : PipelineParam
         background = torch.tensor(bg_color, dtype=torch.float32, device="cuda")
 
         if not skip_train:
-             render_set(dataset.model_path, "train", scene.loaded_iter, scene.getTrainCameras(), gaussians, pipeline, background)
+            train_dataset = ViewpointDataset(scene.getTrainCameras(), dataset, len(scene.getTrainCameras()))
+            render_set(dataset.model_path, "train", scene.loaded_iter, train_dataset, gaussians, pipeline, background)
 
         if not skip_test:
-             render_set(dataset.model_path, "test", scene.loaded_iter, scene.getTestCameras(), gaussians, pipeline, background)
+            test_dataset = ViewpointDataset(scene.getTestCameras(), dataset, len(scene.getTestCameras()))
+            render_set(dataset.model_path, "test", scene.loaded_iter, test_dataset, gaussians, pipeline, background)
 
 if __name__ == "__main__":
     # Set up command line argument parser
