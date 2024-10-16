@@ -19,6 +19,7 @@ import sys
 from scene import Scene, GaussianModel
 from utils.general_utils import safe_state
 import uuid
+import subprocess
 from tqdm import tqdm
 from utils.image_utils import psnr
 from argparse import ArgumentParser, Namespace
@@ -34,6 +35,28 @@ except ImportError:
 
 def custom_collate(batch):
     return batch
+
+def get_gpu_memory_usage():
+    # 调用 nvidia-smi 命令
+    result = subprocess.run(['nvidia-smi', '--query-gpu=memory.used,memory.total', '--format=csv,nounits,noheader'],
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    
+    if result.returncode != 0:
+        print("Error: Unable to get GPU memory usage.")
+        return None
+    
+    # 解析输出
+    lines = result.stdout.strip().split('\n')
+    memory_info = [line.split(', ') for line in lines]
+    
+    gpu_memory_usage = []
+    for used, total in memory_info:
+        used = float(used)
+        total = float(total)
+        usage_percentage = (used / total) * 100
+        gpu_memory_usage.append(usage_percentage)
+    
+    return gpu_memory_usage[0]
 
 def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoint_iterations, checkpoint, debug_from):
     first_iter = 0
@@ -164,6 +187,11 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
                 progress_bar.update(10)
             if iteration == opt.iterations:
                 progress_bar.close()
+
+            if iteration % 1000 == 0:
+                gpu_memory_percentage = get_gpu_memory_usage()
+                if gpu_memory_percentage > opt.gpu_memory_limit:
+                    scene.save(iteration)
 
             # Log and save
             training_report(tb_writer, iteration, Ll1, loss, l1_loss, iter_start.elapsed_time(iter_end), testing_iterations, scene, viewpoint_dataset, test_dataset, render, (pipe, background))

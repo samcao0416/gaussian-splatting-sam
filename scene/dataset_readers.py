@@ -43,8 +43,11 @@ class CameraInfo(NamedTuple):
     FovX: np.array
     image_path: str
     image_name: str
+    depth_path: str
     width: int
     height: int
+    cx: float
+    cy: float
 
 class SceneInfo(NamedTuple):
     point_cloud: BasicPointCloud
